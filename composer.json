@@ -1,6 +1,6 @@
 {
     "name": "uupvite/vite-assets-loader",
-    "version": "v0.0.1",
+    "version": "v1.0.0",
     "license": "MIT",
     "autoload": {
         "psr-4": {
