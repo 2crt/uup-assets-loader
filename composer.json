@@ -1,0 +1,10 @@
+{
+    "name": "uupvite/vite-assets-loader",
+    "autoload": {
+        "psr-4": {
+            "UupVite\\": "src/"
+        }
+    },
+    "minimum-stability": "stable",
+    "require": {}
+}
