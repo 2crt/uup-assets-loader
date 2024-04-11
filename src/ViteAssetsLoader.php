@@ -20,6 +20,11 @@ class ViteAssetsLoader {
 	private $manifest_data = null;
 
 	/**
+	 * Path to the manifest file
+	 */
+	private $manifest_path;
+
+	/**
 	 * URL to the manifest file
 	 */
 	private $manifest_url;
@@ -51,12 +56,13 @@ class ViteAssetsLoader {
 	 * @param string $manifest_url url to the manifest; it's used to build production urls
 	 */
 	public function __construct( string $manifest_path, string $manifest_url ) {
+		$this->manifest_path = $manifest_path;
 		$this->manifest_url = $manifest_url;
 
 		$hot_file_applied = $this->apply_hot_file_configuration();
 
 		if ( ! $hot_file_applied ) {
-			$this->apply_prod_manifest_configuration( $manifest_path );
+			$this->apply_prod_manifest_configuration();
 		}
 
 		// wp_enqueue_script is the proper hook to enqueue scripts AND styles
@@ -82,7 +88,7 @@ class ViteAssetsLoader {
 	 * @return bool
 	 */
 	protected function apply_hot_file_configuration() {
-		$hot_file_path = APP_THEME_DIR . '.hotfile.json';
+		$hot_file_path = dirname($this->manifest_path) . '/.hotfile.json';
 
 		if ( ! file_exists( $hot_file_path ) ) {
 			return false;
@@ -120,10 +126,10 @@ class ViteAssetsLoader {
 	 *
 	 * @return void
 	 */
-	protected function apply_prod_manifest_configuration( $manifest_path ) {
-		if ( file_exists( $manifest_path ) ) {
+	protected function apply_prod_manifest_configuration() {
+		if ( file_exists( $this->manifest_path ) ) {
 			$this->manifest_data = wp_json_file_decode(
-				$manifest_path,
+				$this->manifest_path,
 				[ 'associative' => true ]
 			);
 		} else {
