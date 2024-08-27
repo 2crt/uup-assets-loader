@@ -20,11 +20,6 @@ class ViteAssetsLoader {
 	private $manifest_data = null;
 
 	/**
-	 * Path to the manifest file
-	 */
-	private $manifest_path;
-
-	/**
 	 * URL to the manifest file
 	 */
 	private $manifest_url;
@@ -33,6 +28,11 @@ class ViteAssetsLoader {
 	 * The enqueued scripts: [ 'script-handle' => 'resources/js/script.js', ... ]
 	 */
 	private $enqueued_scripts = [];
+
+	/**
+	 * The enqueued editor scripts: [ 'script-handle' => 'resources/js/script.js', ... ]
+	 */
+	private $enqueued_editor_scripts = [];
 
 	/**
 	 * Styles bundled with scripts. Since Vite 5, each asset can have extra styles.
@@ -56,27 +56,16 @@ class ViteAssetsLoader {
 	 * @param string $manifest_url url to the manifest; it's used to build production urls
 	 */
 	public function __construct( string $manifest_path, string $manifest_url ) {
-		$this->manifest_path = $manifest_path;
 		$this->manifest_url = $manifest_url;
 
-		$hot_file_applied = $this->apply_hot_file_configuration();
+		$hot_file_applied = $this->apply_hot_file_configuration( $manifest_path );
 
 		if ( ! $hot_file_applied ) {
-			$this->apply_prod_manifest_configuration();
+			$this->apply_prod_manifest_configuration( $manifest_path );
 		}
 
-		// wp_enqueue_script is the proper hook to enqueue scripts AND styles
-		add_action( 'wp_enqueue_scripts', [ $this, 'push_assets_to_wp_queue' ] );
+		add_action( 'enqueue_block_assets', [ $this, 'push_assets_to_wp_queue' ] );
 		add_action( 'enqueue_block_editor_assets', [ $this, 'push_assets_to_wp_editor_queue' ] );
-
-		// All <script> tags enqueued through this class should have
-		// type="module" attribute, even in production.
-		add_filter( 'script_loader_tag', function ( $tag, $handle ) {
-			if ( isset( $this->enqueued_scripts[ $handle ] ) ) {
-				return preg_replace( '/^<script /i', '<script type="module" ', $tag );
-			}
-			return $tag;
-		}, 10, 2 );
 	}
 
 	/**
@@ -87,8 +76,8 @@ class ViteAssetsLoader {
 	 *
 	 * @return bool
 	 */
-	protected function apply_hot_file_configuration() {
-		$hot_file_path = dirname($this->manifest_path) . '/.hotfile.json';
+	protected function apply_hot_file_configuration($manifest_path) {
+		$hot_file_path = dirname($manifest_path) . '/.hotfile.json';
 
 		if ( ! file_exists( $hot_file_path ) ) {
 			return false;
@@ -126,10 +115,10 @@ class ViteAssetsLoader {
 	 *
 	 * @return void
 	 */
-	protected function apply_prod_manifest_configuration() {
-		if ( file_exists( $this->manifest_path ) ) {
+	protected function apply_prod_manifest_configuration( $manifest_path ) {
+		if ( file_exists( $manifest_path ) ) {
 			$this->manifest_data = wp_json_file_decode(
-				$this->manifest_path,
+				$manifest_path,
 				[ 'associative' => true ]
 			);
 		} else {
@@ -138,27 +127,28 @@ class ViteAssetsLoader {
 	}
 
 	/**
-	 * Call wp_enqueue_script and wp_enqueue_style for each asset.
+	 * Call wp_enqueue_script_module and wp_enqueue_style for each asset.
 	 *
 	 * @return void
 	 */
 	public function push_assets_to_wp_queue() {
-		foreach ( $this->enqueued_scripts as $handle => $path ) {
-			$url = $this->make_asset_url($path);
-			if (is_null($url)) {
-				$this->add_admin_bar_message("Missing script: $handle");
-				continue;
+		if ( ! is_admin() ) {
+			foreach ( $this->enqueued_scripts as $handle => $path ) {
+				$url = $this->make_asset_url($path);
+				if (is_null($url)) {
+					$this->add_admin_bar_message( "Missing script: $handle" );
+					continue;
+				}
+				wp_enqueue_script_module(
+					$handle,
+					$url,
+					[],
+					// This null is intentional: it prevents `?ver=X.X.X`
+					// arguments in the URL. This would cause problems
+					// with the Vite dev server
+					null
+				);
 			}
-			wp_enqueue_script(
-				$handle,
-				$url,
-				[],
-				// This null is intentional: it prevents `?ver=X.X.X`
-				// arguments in the URL. This would cause problems
-				// with the Vite dev server
-				null,
-				[ 'in_footer' => true ]
-			);
 		}
 
 		foreach ( $this->enqueued_styles as $handle => $path ) {
@@ -167,10 +157,16 @@ class ViteAssetsLoader {
 				$this->add_admin_bar_message( "Missing style: $handle" );
 				continue;
 			}
+
+			$deps = [];
+			if ( ! is_admin() ) {
+				$deps = [ 'global-styles' ];
+			}
+
 			wp_enqueue_style(
 				$handle,
 				$this->make_asset_url( $path ),
-				[],
+				$deps,
 				// Again, the `null` arg is significant here
 				null
 			);
@@ -198,6 +194,23 @@ class ViteAssetsLoader {
 				$this->make_asset_url( $path ),
 				[],
 				// Again, the `null` arg is significant here
+				null
+			);
+		}
+
+		foreach ( $this->enqueued_editor_scripts as $handle => $path ) {
+			$url = $this->make_asset_url($path);
+			if (is_null($url)) {
+				$this->add_admin_bar_message( "Missing script: $handle" );
+				continue;
+			}
+			wp_enqueue_script_module(
+				$handle,
+				$url,
+				[],
+				// This null is intentional: it prevents `?ver=X.X.X`
+				// arguments in the URL. This would cause problems
+				// with the Vite dev server
 				null
 			);
 		}
@@ -332,6 +345,17 @@ class ViteAssetsLoader {
 				$this->enqueued_scripts_extra_styles[ "$handle-styles-$i" ] = $this->dist_url( $file );
 			}
 		}
+	}
+
+	/**
+	 * Enqueue a javascript-ish file built with the vite dev process.
+	 *
+	 * @param string $handle The wp_enqueue_script handle
+	 * @param string $path Path to the file in the resources directory
+	 * @return void
+	 */
+	public function enqueue_editor_script( $handle, $path ) {
+		$this->enqueued_editor_scripts[ $handle ] = $path;
 	}
 
 	/**
