@@ -1,5 +1,5 @@
 <?php
-namespace UupVite;
+namespace Uup;
 
 /**
  * Load vite scripts and styles for current environment:
