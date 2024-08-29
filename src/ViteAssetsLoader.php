@@ -269,17 +269,19 @@ class ViteAssetsLoader {
 	public function load_vite_client_scripts()
 	{
 		// JSX requires some extra scripts for hot reload, see https://vitejs.dev/guide/backend-integration.html
-		if ( $this->has_jsx() ) : ?>
-			<script type="module">
-				import RefreshRuntime from '<?php echo $this->hot_asset_url("@react-refresh") ?>'
-				RefreshRuntime.injectIntoGlobalHook(window)
-				window.$RefreshReg$ = () => {}
-				window.$RefreshSig$ = () => (type) => type
-				window.__vite_plugin_react_preamble_installed__ = true
-			</script>
-		<?php endif; ?>
-		<script type="module" src="<?php echo $this->hot_asset_url( '@vite/client' ) ?>"></script>
-		<?php
+		if ( $this->has_jsx() ) {
+			printf('
+				<script type="module">
+					import RefreshRuntime from "%s";
+					RefreshRuntime.injectIntoGlobalHook(window)
+					window.$RefreshReg$ = () => {}
+					window.$RefreshSig$ = () => (type) => type
+					window.__vite_plugin_react_preamble_installed__ = true
+				</script>
+			', $this->hot_asset_url( '@react-refresh' ) );
+		}
+
+		printf( '<script type="module" src="%s"></script>', $this->hot_asset_url( '@vite/client' ) );
 	}
 
 	/**
