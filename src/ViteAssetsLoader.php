@@ -1,4 +1,5 @@
 <?php
+
 namespace Uup;
 
 /**
@@ -53,7 +54,7 @@ class ViteAssetsLoader {
 	 * Initialize the asset loader
 	 *
 	 * @param string $manifest_path absolute path to the manifest file; file might not exist
-	 * @param string $manifest_url url to the manifest; it's used to build production urls
+	 * @param string $manifest_url  url to the manifest; it's used to build production urls
 	 */
 	public function __construct( string $manifest_path, string $manifest_url ) {
 		$this->manifest_url = $manifest_url;
@@ -76,8 +77,8 @@ class ViteAssetsLoader {
 	 *
 	 * @return bool
 	 */
-	protected function apply_hot_file_configuration($manifest_path) {
-		$hot_file_path = dirname($manifest_path) . '/.hotfile.json';
+	protected function apply_hot_file_configuration( $manifest_path ) {
+		$hot_file_path = dirname( $manifest_path ) . '/.hotfile.json';
 
 		if ( ! file_exists( $hot_file_path ) ) {
 			return false;
@@ -95,7 +96,7 @@ class ViteAssetsLoader {
 
 		if ( $hot_file_data[ 'generatedOnHost' ] !== gethostname() ) {
 			$this->add_admin_bar_message(
-				"Ignoring assets file from another host: " . $hot_file_data[ 'generatedOnHost' ]
+				'Ignoring assets file from another host: ' . $hot_file_data[ 'generatedOnHost' ]
 			);
 			return false;
 		}
@@ -134,8 +135,8 @@ class ViteAssetsLoader {
 	public function push_assets_to_wp_queue() {
 		if ( ! is_admin() ) {
 			foreach ( $this->enqueued_scripts as $handle => $path ) {
-				$url = $this->make_asset_url($path);
-				if (is_null($url)) {
+				$url = $this->make_asset_url( $path );
+				if ( is_null( $url ) ) {
 					$this->add_admin_bar_message( "Missing script: $handle" );
 					continue;
 				}
@@ -199,8 +200,8 @@ class ViteAssetsLoader {
 		}
 
 		foreach ( $this->enqueued_editor_scripts as $handle => $path ) {
-			$url = $this->make_asset_url($path);
-			if (is_null($url)) {
+			$url = $this->make_asset_url( $path );
+			if ( is_null( $url ) ) {
 				$this->add_admin_bar_message( "Missing script: $handle" );
 				continue;
 			}
@@ -220,6 +221,7 @@ class ViteAssetsLoader {
 	 * Produce "hot" asset URL from the vite server.
 	 *
 	 * @param string $path
+	 *
 	 * @return string URL for the path from the hot server
 	 */
 	private function hot_asset_url( $path ) {
@@ -230,6 +232,7 @@ class ViteAssetsLoader {
 	 * URL to a file in the dist/ directory.
 	 *
 	 * @param string $path
+	 *
 	 * @return string $url
 	 */
 	private function dist_url( $file ) {
@@ -240,6 +243,7 @@ class ViteAssetsLoader {
 	 * Produce URL for a path from the manifest
 	 *
 	 * @param string $path
+	 *
 	 * @return string URL for the path from the hot server
 	 */
 	private function prod_asset_url( $path ) {
@@ -253,6 +257,7 @@ class ViteAssetsLoader {
 	 * Produce a hot or production URL for a path, based on the current configuration
 	 *
 	 * @param string $path
+	 *
 	 * @return string URL
 	 */
 	private function make_asset_url( $path ) {
@@ -266,8 +271,7 @@ class ViteAssetsLoader {
 	 *
 	 * @return void
 	 */
-	public function load_vite_client_scripts()
-	{
+	public function load_vite_client_scripts() {
 		// JSX requires some extra scripts for hot reload, see https://vitejs.dev/guide/backend-integration.html
 		if ( $this->has_jsx() ) {
 			printf('
@@ -290,7 +294,7 @@ class ViteAssetsLoader {
 	 * @return bool
 	 */
 	private function is_dev() {
-		return !empty( $this->vite_server_url );
+		return ! empty( $this->vite_server_url );
 	}
 
 	/**
@@ -299,7 +303,7 @@ class ViteAssetsLoader {
 	 * @return bool
 	 */
 	private function is_prod() {
-		return ! $this->is_dev() && !empty( $this->manifest_data );
+		return ! $this->is_dev() && ! empty( $this->manifest_data );
 	}
 
 	/**
@@ -307,13 +311,14 @@ class ViteAssetsLoader {
 	 *
 	 * @param string $message The title of the admin bar message
 	 * @param string ?$link If you'd like to link the message, pass in the href
+	 *
 	 * @return void
 	 */
 	private function add_admin_bar_message( $message ) {
-		add_action( 'admin_bar_menu', function ( $wp_admin_bar ) use ($message) {
+		add_action( 'admin_bar_menu', function ( $wp_admin_bar ) use ( $message ) {
 			$wp_admin_bar->add_node( [
-				'id'     => 'vite-dev-process-' . rand(),
-				'title'  => $message,
+				'id' => 'vite-dev-process-' . rand(),
+				'title' => $message,
 				'parent' => 'top-secondary',
 			] );
 		}, 100 );
@@ -333,7 +338,8 @@ class ViteAssetsLoader {
 	 * Enqueue a javascript-ish file built with the vite dev process.
 	 *
 	 * @param string $handle The wp_enqueue_script handle
-	 * @param string $path Path to the file in the resources directory
+	 * @param string $path   Path to the file in the resources directory
+	 *
 	 * @return void
 	 */
 	public function enqueue_script( $handle, $path ) {
@@ -353,7 +359,8 @@ class ViteAssetsLoader {
 	 * Enqueue a javascript-ish file built with the vite dev process.
 	 *
 	 * @param string $handle The wp_enqueue_script handle
-	 * @param string $path Path to the file in the resources directory
+	 * @param string $path   Path to the file in the resources directory
+	 *
 	 * @return void
 	 */
 	public function enqueue_editor_script( $handle, $path ) {
@@ -364,7 +371,8 @@ class ViteAssetsLoader {
 	 * Enqueue a CSS-ish file built with the vite dev process.
 	 *
 	 * @param string $handle The wp_enqueue_style handle
-	 * @param string $path Path to the file in the resources directory
+	 * @param string $path   Path to the file in the resources directory
+	 *
 	 * @return void
 	 */
 	public function enqueue_style( $handle, $path ) {
@@ -375,7 +383,8 @@ class ViteAssetsLoader {
 	 * Enqueue a CSS-ish editor file built with the vite dev process.
 	 *
 	 * @param string $handle The wp_enqueue_style handle
-	 * @param string $path Path to the file in the resources directory
+	 * @param string $path   Path to the file in the resources directory
+	 *
 	 * @return void
 	 */
 	public function enqueue_editor_style( $handle, $path ) {
