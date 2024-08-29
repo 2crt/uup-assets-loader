@@ -31,11 +31,6 @@ class ViteAssetsLoader {
 	private $enqueued_scripts = [];
 
 	/**
-	 * The enqueued editor scripts: [ 'script-handle' => 'resources/js/script.js', ... ]
-	 */
-	private $enqueued_editor_scripts = [];
-
-	/**
 	 * Styles bundled with scripts. Since Vite 5, each asset can have extra styles.
 	 */
 	private $enqueued_scripts_extra_styles = [];
@@ -107,6 +102,8 @@ class ViteAssetsLoader {
 
 		add_action( 'wp_head', [ $this, 'load_vite_client_scripts' ] );
 		add_action( 'admin_head', [ $this, 'load_vite_client_scripts' ] );
+
+		add_action( 'admin_print_scripts', [ $this, 'load_customizer_auto_reload_script' ] );
 
 		return true;
 	}
@@ -198,23 +195,6 @@ class ViteAssetsLoader {
 				null
 			);
 		}
-
-		foreach ( $this->enqueued_editor_scripts as $handle => $path ) {
-			$url = $this->make_asset_url( $path );
-			if ( is_null( $url ) ) {
-				$this->add_admin_bar_message( "Missing script: $handle" );
-				continue;
-			}
-			wp_enqueue_script_module(
-				$handle,
-				$url,
-				[],
-				// This null is intentional: it prevents `?ver=X.X.X`
-				// arguments in the URL. This would cause problems
-				// with the Vite dev server
-				null
-			);
-		}
 	}
 
 	/**
@@ -289,6 +269,22 @@ class ViteAssetsLoader {
 	}
 
 	/**
+	 * Handle hot-reload in the admin customizer
+	 *
+	 * @return void
+	 */
+	public function load_customizer_auto_reload_script() {
+		// Setup live reload for admin customizer
+		printf('
+			<script type="module">
+				if (import.meta && window.frames[ "editor-canvas" ]) {
+					import.meta.hot.on("vite:afterUpdate", window.frames[ "editor-canvas" ].location.reload );
+				}
+			</script>
+		');
+	}
+
+	/**
 	 * Do we have vite dev server running?
 	 *
 	 * @return bool
@@ -353,18 +349,6 @@ class ViteAssetsLoader {
 				$this->enqueued_scripts_extra_styles[ "$handle-styles-$i" ] = $this->dist_url( $file );
 			}
 		}
-	}
-
-	/**
-	 * Enqueue a javascript-ish file built with the vite dev process.
-	 *
-	 * @param string $handle The wp_enqueue_script handle
-	 * @param string $path   Path to the file in the resources directory
-	 *
-	 * @return void
-	 */
-	public function enqueue_editor_script( $handle, $path ) {
-		$this->enqueued_editor_scripts[ $handle ] = $path;
 	}
 
 	/**
