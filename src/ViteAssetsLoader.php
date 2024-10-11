@@ -62,6 +62,15 @@ class ViteAssetsLoader {
 
 		add_action( 'enqueue_block_assets', [ $this, 'push_assets_to_wp_queue' ] );
 		add_action( 'enqueue_block_editor_assets', [ $this, 'push_assets_to_wp_editor_queue' ] );
+
+		// All <script> tags enqueued through this class should have
+		// type="module" attribute, even in production.
+		add_filter( 'script_loader_tag', function ( $tag, $handle ) {
+			if ( isset( $this->enqueued_scripts[ $handle ] ) ) {
+				return preg_replace( '/^<script /i', '<script type="module" ', $tag );
+			}
+			return $tag;
+		}, 10, 2 );
 	}
 
 	/**
@@ -125,7 +134,7 @@ class ViteAssetsLoader {
 	}
 
 	/**
-	 * Call wp_enqueue_script_module and wp_enqueue_style for each asset.
+	 * Call wp_enqueue_script and wp_enqueue_style for each asset.
 	 *
 	 * @return void
 	 */
@@ -137,14 +146,15 @@ class ViteAssetsLoader {
 					$this->add_admin_bar_message( "Missing script: $handle" );
 					continue;
 				}
-				wp_enqueue_script_module(
+				wp_enqueue_script(
 					$handle,
 					$url,
 					[],
 					// This null is intentional: it prevents `?ver=X.X.X`
 					// arguments in the URL. This would cause problems
 					// with the Vite dev server
-					null
+					null,
+					[ 'in_footer' => true ]
 				);
 			}
 		}
