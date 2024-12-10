@@ -46,6 +46,11 @@ class ViteAssetsLoader {
 	private $enqueued_editor_styles = [];
 
 	/**
+	 * The enqueued editor scripts: [ 'script-handle' => 'resources/js/editor.js', ... ]
+	 */
+	private $enqueued_editor_scripts = [];
+
+	/**
 	 * Initialize the asset loader
 	 *
 	 * @param string $manifest_path absolute path to the manifest file; file might not exist
@@ -66,7 +71,7 @@ class ViteAssetsLoader {
 		// All <script> tags enqueued through this class should have
 		// type="module" attribute, even in production.
 		add_filter( 'script_loader_tag', function ( $tag, $handle ) {
-			if ( isset( $this->enqueued_scripts[ $handle ] ) ) {
+			if ( isset( $this->enqueued_scripts[ $handle ] ) || isset( $this->enqueued_editor_scripts[ $handle ] ) ) {
 				return preg_replace( '/^<script /i', '<script type="module" ', $tag );
 			}
 			return $tag;
@@ -111,8 +116,6 @@ class ViteAssetsLoader {
 
 		add_action( 'wp_head', [ $this, 'load_vite_client_scripts' ] );
 		add_action( 'admin_head', [ $this, 'load_vite_client_scripts' ] );
-
-		add_action( 'admin_print_scripts', [ $this, 'load_customizer_auto_reload_script' ] );
 
 		return true;
 	}
@@ -191,6 +194,23 @@ class ViteAssetsLoader {
 	 * @return void
 	 */
 	public function push_assets_to_wp_editor_queue() {
+		foreach ( $this->enqueued_editor_scripts as $handle => $path ) {
+			$url = $this->make_asset_url( $path );
+			if ( is_null( $url ) ) {
+				$this->add_admin_bar_message( "Missing script: $handle" );
+				continue;
+			}
+			wp_enqueue_script(
+				$handle,
+				$url,
+				[],
+				// This null is intentional: it prevents `?ver=X.X.X`
+				// arguments in the URL. This would cause problems
+				// with the Vite dev server
+				null,
+				[ 'in_footer' => true ]
+			);
+		}
 		foreach ( $this->enqueued_editor_styles as $handle => $path ) {
 			$url = $this->make_asset_url( $path );
 			if ( is_null( $url ) ) {
@@ -383,5 +403,17 @@ class ViteAssetsLoader {
 	 */
 	public function enqueue_editor_style( $handle, $path ) {
 		$this->enqueued_editor_styles[ $handle ] = $path;
+	}
+
+	/**
+	 * Enqueue a javascript-ish editor file built with the vite dev process.
+	 *
+	 * @param string $handle The wp_enqueue_script handle
+	 * @param string $path   Path to the file in the resources directory
+	 *
+	 * @return void
+	 */
+	public function enqueue_editor_script( $handle, $path ) {
+		$this->enqueued_editor_scripts[ $handle ] = $path;
 	}
 }
