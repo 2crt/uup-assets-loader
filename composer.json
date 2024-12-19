@@ -1,6 +1,6 @@
 {
     "name": "2crt/uup-assets-loader",
-    "version": "v1.0.5",
+    "version": "v1.0.6",
     "license": "MIT",
     "autoload": {
         "psr-4": {
