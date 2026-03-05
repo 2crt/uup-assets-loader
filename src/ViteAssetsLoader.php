@@ -72,7 +72,8 @@ class ViteAssetsLoader {
 		// type="module" attribute, even in production.
 		add_filter( 'script_loader_tag', function ( $tag, $handle ) {
 			if ( isset( $this->enqueued_scripts[ $handle ] ) || isset( $this->enqueued_editor_scripts[ $handle ] ) ) {
-				return preg_replace( '/<script /i', '<script type="module" ', $tag );
+				$tag = preg_replace( '/type=["\'].*?["\']\s*/', '', $tag );
+				$tag = str_replace( '<script ', '<script type="module" ', $tag );
 			}
 			return $tag;
 		}, 10, 2 );
