@@ -171,7 +171,7 @@ class ViteAssetsLoader {
 			}
 
 			$deps = [];
-			if ( ! is_admin() ) {
+			if ( ! is_admin() && wp_style_is('global-styles', 'registered') ) {
 				$deps = [ 'global-styles' ];
 			}
 
