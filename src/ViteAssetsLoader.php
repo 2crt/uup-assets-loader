@@ -67,6 +67,7 @@ class ViteAssetsLoader {
 
 		add_action( 'enqueue_block_assets', [ $this, 'push_assets_to_wp_queue' ] );
 		add_action( 'enqueue_block_editor_assets', [ $this, 'push_assets_to_wp_editor_queue' ] );
+		add_action( 'admin_enqueue_scripts', [ $this, 'dequeue_assets_from_editor' ] );
 
 		// All <script> tags enqueued through this class should have
 		// type="module" attribute, even in production.
@@ -225,6 +226,19 @@ class ViteAssetsLoader {
 				// Again, the `null` arg is significant here
 				null
 			);
+		}
+	}
+
+	/**
+	 * Dequeue assets from the editor outer page to prevent styles leaking out of the iframe
+	 *
+	 * @return void
+	 */
+	public function dequeue_assets_from_editor() {
+		if ( is_admin() ) {
+			foreach ( $this->enqueued_styles as $handle => $path ) {
+				wp_dequeue_style( $handle );
+			}
 		}
 	}
 
